@@ -81,8 +81,8 @@ module Main where
                 cmdBody :: String
                 cmdBody = (words command) drop 1
 
-                in if cmdName `elem` (keys verbs) -- backtick makes infix?
-                    then let ret = (verbs ! command) cmdBody gamestate
+                in if cmdName `elem` (keys vrbs) -- backtick makes infix?
+                    then let ret = (vrbs ! command) cmdBody gamestate
                         in if ret == Nothing
                             then do putStr("That went wrong...")
                                     doroom gamestate
