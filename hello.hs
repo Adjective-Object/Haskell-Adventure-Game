@@ -1,10 +1,11 @@
 module Main where
     import Data.Map.Strict as Map
     import Data.Char as Char
+    import Data.Maybe as Maybe
 
-    newtype Flag = Flag String
-    newtype Item = Item String
-
+    newtype Flag = Flag String deriving (Eq, Show)
+    newtype Item = Item String deriving (Eq, Show)
+    
     unwrapFlag :: Flag -> String
     unwrapFlag (Flag s) = s
     
@@ -24,7 +25,7 @@ module Main where
         verbs :: Map String (String -> GameState -> Maybe GameState) -- maps VERB strings to change in gamestate
         }
 
-    goRoom :: String -> GameState -> Maybe GameState
+    goRoom :: GameState -> Room -> GameState
     goRoom instate newroom = GameState{
                                     flags = flags instate,
                                     items = items instate,
@@ -40,7 +41,7 @@ module Main where
                         in fromList[ ("go", 
                             (\ cmdstr gamestate -> 
                             if cmdstr `elem` keys funcs
-                                then (funcs ! cmdstr) cmdstr gamestate
+                                then Just ((funcs ! cmdstr) cmdstr gamestate)
                                 else Nothing
                         )) ]
 
@@ -52,12 +53,13 @@ module Main where
         ,description = (\g
             -> "This is a damp dungeon-y starting room, \
                 \because this is an adventure game, \
-                \and that is the sort of thing adventura games do"
+                \and that is the sort of thing adventure games do. "
                 ++ if (Flag "starting_lever") `elem` (flags g)
-                    then "There is a lever in the middle of the floor, \
-                        \beckoning you to pull it"
-                    else "The lever you pulled is still in \
-                        \the middle of the floor"
+                    then "The lever you pulled is still in \
+                        \the middle of the floor."
+                    else "There is a lever in the middle of the floor, \
+                        \beckoning you to pull it."
+                    
         )
         ,verbs = makeGoList([
                 ("this room", room1 ) -- shorthand that makes links between rooms under the go command
@@ -66,30 +68,37 @@ module Main where
 
     doroombody :: GameState -> IO ()
     doroombody gamestate = do 
-            command <- Prelude.map(toLower, getLine)
+            command <- getLine
 
             if command /= ""
                 then putStr("\n")
                 else putStr("")
             
-            let vrbs :: Map String (String -> GameState -> Maybe GameState) 
+            let 
+                vrbs :: Map String (String -> GameState -> Maybe GameState) 
                 vrbs = (verbs (room gamestate))
                 
+                comlower = (Prelude.map toLower command)
+
                 cmdName :: String
-                cmdName = (words command) !! 0
+                cmdName = (words comlower) !! 0
+
+                catString :: String -> String -> String
+                catString a b = a ++ " " ++ b 
 
                 cmdBody :: String
-                cmdBody = (words command) drop 1
+                cmdBody = (Prelude.foldr catString "" (drop 1 (words command)) )
 
-                in if cmdName `elem` (keys vrbs) -- backtick makes infix?
+                in 
+                if cmdName `elem` (keys vrbs) -- backtick makes infix?
                     then let ret = (vrbs ! command) cmdBody gamestate
-                        in if ret == Nothing
+                        in if isNothing ret
                             then do putStr("That went wrong...")
                                     doroom gamestate
-                            else doroom ret
+                            else doroom (fromJust ret)
                     else do
-                        putStrLn ("I don't recognize the verb \"" ++ cmdName ++ "\"")
-                        doroom gamestate
+                            putStrLn ("I don't recognize the verb \"" ++ cmdName ++ "\"")
+                            doroom gamestate
 
     doroom :: GameState -> IO ()
     doroom gamestate = do
