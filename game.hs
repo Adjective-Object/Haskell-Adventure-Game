@@ -19,6 +19,20 @@ module Main where
         ,flags :: [Flag]
     }
 
+    changeRoom :: GameState -> Room -> GameState
+    changeRoom g r = GameState{
+            room = r,
+            items = items g,
+            flags = flags g
+        } 
+
+
+    addFlag :: GameState -> Flag -> GameState
+    addFlag g f = GameState{
+            room = room g,
+            items = items g,
+            flags = (flags g) ++ [f]
+        } 
 
     -- using flags and items is superior to a pure DFM approach, I think.
     data Room = Room {
@@ -47,9 +61,6 @@ module Main where
                                 else Left ( "Cannot go to target \"" ++ cmdstr ++"\".")
                             )) ]
 
-    mergeVerbList :: [(String, Room)] -> [(String, Room)] -> [(String, Room)]
-    mergeVerbList l1 l2 = l1 -- TODO merging verb lists
-
     room1 = Room {
         title = "A Damp Dungeon"
         ,description = (\g
@@ -63,8 +74,17 @@ module Main where
                         \beckoning you to pull it."
                     
         )
-        ,verbs = makeGoList([
+        ,verbs = union
+            (makeGoList [
                 ("this room", room1 ) -- shorthand that makes links between rooms under the go command
+            ])
+
+            (fromList [
+                ("pull", (\ com state -> 
+                    if com == "lever"
+                        then Right (addFlag state (Flag "starting_lever"))
+                        else Left ("cannot pull \"" ++ com ++ "\".")
+                    ))
             ])
     }
 
