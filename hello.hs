@@ -1,11 +1,12 @@
 module Main where
     import Data.Map.Strict as Map
     import Data.Char as Char
-    import Data.Maybe as Maybe
 
     newtype Flag = Flag String deriving (Eq, Show)
     newtype Item = Item String deriving (Eq, Show)
-    
+
+    type FailureMessage =  String
+
     unwrapFlag :: Flag -> String
     unwrapFlag (Flag s) = s
     
@@ -13,17 +14,18 @@ module Main where
     unwrapItem (Item s) = s
 
     data GameState = GameState{
-        room :: Room,
-        items :: [Item],
-        flags :: [Flag]
+        room :: Room
+        ,items :: [Item]
+        ,flags :: [Flag]
     }
+
 
     -- using flags and items is superior to a pure DFM approach, I think.
     data Room = Room {
-        title :: String,
-        description :: GameState -> String,
-        verbs :: Map String (String -> GameState -> Maybe GameState) -- maps VERB strings to change in gamestate
-        }
+        title :: String
+        ,description :: GameState -> String
+        ,verbs :: Map String (String -> GameState -> Either FailureMessage GameState) -- maps VERB strings to change in gamestate
+    }
 
     goRoom :: GameState -> Room -> GameState
     goRoom instate newroom = GameState{
@@ -31,7 +33,7 @@ module Main where
                                     items = items instate,
                                     room = newroom}
 
-    makeGoList :: [(String, Room)] -> Map String (String -> GameState -> Maybe GameState)
+    makeGoList :: [(String, Room)] -> Map String (String -> GameState -> Either FailureMessage GameState)
     makeGoList largs = let funcs = fromList([
                             (fst pair, 
                                 (\ cmdin instate -> 
@@ -41,9 +43,9 @@ module Main where
                         in fromList[ ("go", 
                             (\ cmdstr gamestate -> 
                             if cmdstr `elem` keys funcs
-                                then Just ((funcs ! cmdstr) cmdstr gamestate)
-                                else Nothing
-                        )) ]
+                                then Right ((funcs ! cmdstr) cmdstr gamestate)
+                                else Left ( "Cannot go to target \"" ++ cmdstr ++"\".")
+                            )) ]
 
     mergeVerbList :: [(String, Room)] -> [(String, Room)] -> [(String, Room)]
     mergeVerbList l1 l2 = l1 -- TODO merging verb lists
@@ -72,10 +74,10 @@ module Main where
 
             if command /= ""
                 then putStr("\n")
-                else putStr("")
+                else doroombody gamestate
             
             let 
-                vrbs :: Map String (String -> GameState -> Maybe GameState) 
+                vrbs :: Map String (String -> GameState -> Either FailureMessage GameState) 
                 vrbs = (verbs (room gamestate))
                 
                 comlower = (Prelude.map toLower command)
@@ -87,15 +89,16 @@ module Main where
                 catString a b = a ++ " " ++ b 
 
                 cmdBody :: String
-                cmdBody = (Prelude.foldr catString "" (drop 1 (words command)) )
+                cmdBody = init (Prelude.foldr catString "" (drop 1 (words comlower) ))
 
                 in 
                 if cmdName `elem` (keys vrbs) -- backtick makes infix?
-                    then let ret = (vrbs ! command) cmdBody gamestate
-                        in if isNothing ret
-                            then do putStr("That went wrong...")
-                                    doroom gamestate
-                            else doroom (fromJust ret)
+                    then let ret = (vrbs ! cmdName) cmdBody gamestate
+                        in case ret of
+                            Left msg -> do
+                                putStrLn(msg)
+                                doroom gamestate
+                            Right state -> doroom (state)
                     else do
                             putStrLn ("I don't recognize the verb \"" ++ cmdName ++ "\"")
                             doroom gamestate
