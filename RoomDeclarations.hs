@@ -41,9 +41,10 @@ module RoomDeclarations where
                     (\ cmdin instate ->
                         goRoom instate (snd pair)
                     )) | pair <- largs ]
+
     -- adds a flag to a gamestate
     addFlag :: GameState -> Flag -> GameState
-    addFlag g f = GameState{
+    addFlag g f = GameState {
             room = room g,
             items = items g,
             flags = (flags g) ++ [f]
@@ -69,7 +70,8 @@ module RoomDeclarations where
                 \and that is the sort of thing adventure games do. "
                 ++ if (Flag "starting_lever") `elem` (flags g)
                     then "The lever you pulled is still in \
-                        \the middle of the floor. Also a hidden door opened up to the SOUTH now"
+                        \the middle of the floor. Also a hidden door \
+                        \opened up to the SOUTH now"
                     else "There is a lever in the middle of the floor, \
                         \beckoning you to pull it."
 
@@ -89,20 +91,20 @@ module RoomDeclarations where
                     else if (Flag "starting_lever_2") `elem` (flags state)
                     then VerbResponse
                         { newstate = Nothing
-                        , message = "You gave up on that shit, remember?"}
+                        , message = "You gave up on that, remember?"}
                     else VerbResponse 
                         { newstate = Just(addFlag state (Flag "starting_lever_2"))
-                        , message = "You try to pull the lever back, but it " ++
-                                    "seems stuck. You give up on trying to " ++
-                                    "pull the lever."}
+                        , message = "You try to pull the lever back, but it \
+                                    \seems stuck. You give up on trying to \
+                                    \pull the lever."}
                 | otherwise = 
                     failVerb state ("cannot pull \"" ++ com ++ "\".")
             go com state 
                 | com == "south" =
                     VerbResponse
                         { newstate = Just (changeRoom state room2)
-                        , message = "you walk through the now open door" ++
-                                  "to the SOUTH"}
+                        , message = "you walk through the now open door \
+                                    \to the SOUTH"}
 
                 | otherwise =
                     VerbResponse 
